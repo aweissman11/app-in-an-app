@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport", initial-scale=1.0">
+    <title>Basic HTML</title>
+    <script>
+      const getABundle = () => {
+        const response = fetch('http://localhost:3000/bundle')
+          .then(response => {
+            return response.text();
+          })
+          .then(result => {
+            const wrapperScript = document.createElement('script');
+            wrapperScript.src = URL.createObjectURL(
+              new Blob([result], { type: 'text/javascript' }),
+            );
+            document.body.insertAdjacentElement('beforeend', wrapperScript);
+          });
+      };
+
+      const getADiv = async () => {
+        let theDiv = fetch('http://localhost:3000')
+          .then(response => response.body)
+          .then(rb => {
+            const reader = rb.getReader();
+
+            return new ReadableStream({
+              start(controller) {
+                // The following function handles each data chunk
+                function push() {
+                  // "done" is a Boolean and value a "Uint8Array"
+                  reader.read().then(({ done, value }) => {
+                    // If there is no more data to read
+                    if (done) {
+                      controller.close();
+                      return;
+                    }
+                    // Get the data and send it to the browser via the controller
+                    controller.enqueue(value);
+                    // Check chunks by logging to the console
+                    push();
+                  });
+                }
+
+                push();
+              },
+            });
+          })
+          .then(stream => {
+            // Respond with our stream
+            return new Response(stream, {
+              headers: { 'Content-Type': 'text/html' },
+            }).text();
+          })
+          .then(result => {
+            // Do things with result
+            document.body.insertAdjacentHTML('beforeend', result);
+            // console.log('result', result);
+            // if (document.body != null) {
+            //   console.log('document.body', document.body);
+            //   document.body.appendChild(result);
+            // }
+          })
+          .then(() => getABundle());
+      };
+
+      // getABundle();
+      getADiv();
+    </script>
+  </head>
+  <body>
+    <p>Hello</p>
+  </body>
+</html>
